@@ -10,6 +10,10 @@ services:
       POSTGRES_DB: postgres
       POSTGRES_USER: username
       POSTGRES_PASSWORD: password
+    # Without a named volume the database lives in an anonymous volume tied to the container, which
+    # `docker compose down` orphans and `docker compose down -v` deletes - taking every project with it.
+    volumes:
+      - pgdata:/var/lib/postgresql/data
     networks:
       - syson
   app:
@@ -28,3 +32,5 @@ services:
       - syson
 networks:
   syson:
+volumes:
+  pgdata:
