@@ -98,7 +98,11 @@ export const SysONViewSnapshot = ({ editingContextId, diagramId }: DiagramToolba
       diagramId,
       savedAt: new Date().toISOString(),
       nodes: nodes.map((node) => {
-        const data = node.data as NodeData & { minComputedWidth?: number; minComputedHeight?: number; resizedByUser?: boolean };
+        const data = node.data as NodeData & {
+          minComputedWidth?: number;
+          minComputedHeight?: number;
+          resizedByUser?: boolean;
+        };
         const width = node.width ?? node.measured?.width ?? 0;
         const height = node.height ?? node.measured?.height ?? 0;
         return {
@@ -130,7 +134,9 @@ export const SysONViewSnapshot = ({ editingContextId, diagramId }: DiagramToolba
     const setHidden = (elementIds: string[], hide: boolean) =>
       elementIds.length > 0
         ? hideDiagramElement({
-            variables: { input: { id: crypto.randomUUID(), editingContextId, representationId: diagramId, elementIds, hide } },
+            variables: {
+              input: { id: crypto.randomUUID(), editingContextId, representationId: diagramId, elementIds, hide },
+            },
           })
         : Promise.resolve();
 
@@ -189,11 +195,7 @@ export const SysONViewSnapshot = ({ editingContextId, diagramId }: DiagramToolba
           <PhotoCameraOutlinedIcon />
         </IconButton>
       </Tooltip>
-      <Menu
-        data-testid="syson-view-snapshot-menu"
-        anchorEl={anchorEl}
-        open={anchorEl !== null}
-        onClose={closeMenu}>
+      <Menu data-testid="syson-view-snapshot-menu" anchorEl={anchorEl} open={anchorEl !== null} onClose={closeMenu}>
         <MenuItem data-testid="syson-view-snapshot-freeze" onClick={freeze}>
           <ListItemText primary="Freeze current view" secondary="Remember what is shown, hidden and where" />
         </MenuItem>
