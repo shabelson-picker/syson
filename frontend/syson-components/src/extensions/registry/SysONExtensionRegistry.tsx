@@ -78,6 +78,7 @@ import { SysONManageVisibilityNodeAction } from '../manageVisibility/SysONManage
 import { RotateNodeToolOverriddenContribution } from '../rotateNodeTool/RotateNodeToolOverriddenContribution';
 import { SysONDiagramPanelMenu } from '../SysONDiagramPanelMenu';
 import { SysONViewSnapshot } from '../viewSnapshot/SysONViewSnapshot';
+import { SysONVisibilityCommands } from '../visibilityCommands/SysONVisibilityCommands';
 
 const sysONExtensionRegistry: ExtensionRegistry = new ExtensionRegistry();
 
@@ -125,6 +126,11 @@ sysONExtensionRegistry.addComponent(diagramToolbarActionExtensionPoint, {
 sysONExtensionRegistry.addComponent(diagramToolbarActionExtensionPoint, {
   identifier: `syson_${diagramToolbarActionExtensionPoint.identifier}_ViewSnapshot`,
   Component: SysONViewSnapshot,
+});
+
+sysONExtensionRegistry.addComponent(diagramToolbarActionExtensionPoint, {
+  identifier: `syson_${diagramToolbarActionExtensionPoint.identifier}_VisibilityCommands`,
+  Component: SysONVisibilityCommands,
 });
 
 const diagramNodeActionOverrideContributions: DiagramNodeActionOverrideContribution[] = [
