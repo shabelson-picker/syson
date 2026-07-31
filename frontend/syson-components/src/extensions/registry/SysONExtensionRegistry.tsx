@@ -13,7 +13,10 @@
 
 import { ExtensionRegistry } from '@eclipse-sirius/sirius-components-core';
 import {
+  ActionProps,
   DIAGRAM_REPRESENTATION_KIND,
+  DiagramNodeActionOverrideContribution,
+  diagramNodeActionOverrideContributionExtensionPoint,
   diagramToolbarActionExtensionPoint,
   EdgeAppearanceSection,
   EdgeData,
@@ -71,8 +74,10 @@ import { InsertTextualSysMLv2ExplorerToolOverriddenContribution } from '../Inser
 import { InsertTextualSysMLMenuContribution } from '../InsertTextualSysMLv2MenuContribution';
 import { SysONNavigationBarMenuIcon } from '../navigationBarMenu/SysONNavigationBarMenuIcon';
 import { PublishProjectSysMLContentsAsLibraryCommand } from '../omnibox/PublishProjectSysMLContentsAsLibraryCommand';
+import { SysONManageVisibilityNodeAction } from '../manageVisibility/SysONManageVisibilityNodeAction';
 import { RotateNodeToolOverriddenContribution } from '../rotateNodeTool/RotateNodeToolOverriddenContribution';
 import { SysONDiagramPanelMenu } from '../SysONDiagramPanelMenu';
+import { SysONViewSnapshot } from '../viewSnapshot/SysONViewSnapshot';
 
 const sysONExtensionRegistry: ExtensionRegistry = new ExtensionRegistry();
 
@@ -116,6 +121,26 @@ sysONExtensionRegistry.addComponent(diagramToolbarActionExtensionPoint, {
   identifier: `syson_${diagramToolbarActionExtensionPoint.identifier}_CustomToolbarEntriesMenu`,
   Component: SysONDiagramPanelMenu,
 });
+
+sysONExtensionRegistry.addComponent(diagramToolbarActionExtensionPoint, {
+  identifier: `syson_${diagramToolbarActionExtensionPoint.identifier}_ViewSnapshot`,
+  Component: SysONViewSnapshot,
+});
+
+const diagramNodeActionOverrideContributions: DiagramNodeActionOverrideContribution[] = [
+  {
+    canHandle: ({ action }: ActionProps) => action.id === 'siriusweb_manage_visibility',
+    component: SysONManageVisibilityNodeAction,
+  },
+];
+
+sysONExtensionRegistry.putData<DiagramNodeActionOverrideContribution[]>(
+  diagramNodeActionOverrideContributionExtensionPoint,
+  {
+    identifier: `syson_${diagramNodeActionOverrideContributionExtensionPoint.identifier}`,
+    data: diagramNodeActionOverrideContributions,
+  }
+);
 
 sysONExtensionRegistry.addComponent(navigationBarMenuIconExtensionPoint, {
   identifier: `syson_${navigationBarMenuIconExtensionPoint.identifier}`,
