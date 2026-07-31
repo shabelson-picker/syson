@@ -157,9 +157,16 @@ public class SysONShowHideSDVElementEventHandler implements IDiagramEventHandler
             }
         }
 
+        // Never hide an element that the same request explicitly asks to reveal. Without this, a bulk reveal (the
+        // "Reveal hidden elements" diagram toolbar action sends every element of the diagram at once) reveals the
+        // compartments and then immediately hides the tree nodes it was also asked to reveal.
+        nodeIdsToHide.removeAll(resolvedIds);
+
         if (resolvedIds.size() > 0) {
             diagramContext.diagramEvents().add(new HideDiagramElementEvent(resolvedIds, hide));
-            diagramContext.diagramEvents().add(new HideDiagramElementEvent(nodeIdsToHide, true));
+            if (!nodeIdsToHide.isEmpty()) {
+                diagramContext.diagramEvents().add(new HideDiagramElementEvent(nodeIdsToHide, true));
+            }
         }
 
         this.sendResponse(payloadSink, changeDescriptionSink, errors, resolvedIds.size() > 0, diagramContext, diagramInput);

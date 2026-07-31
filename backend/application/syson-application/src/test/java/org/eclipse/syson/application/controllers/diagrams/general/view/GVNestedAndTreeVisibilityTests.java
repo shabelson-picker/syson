@@ -18,15 +18,19 @@ import static org.eclipse.sirius.components.diagrams.tests.DiagramEventPayloadCo
 import com.jayway.jsonpath.JsonPath;
 
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import org.eclipse.sirius.components.collaborative.diagrams.dto.DiagramEventInput;
 import org.eclipse.sirius.components.collaborative.diagrams.dto.DiagramRefreshedEventPayload;
 import org.eclipse.sirius.components.collaborative.diagrams.dto.HideDiagramElementInput;
 import org.eclipse.sirius.components.core.api.SuccessPayload;
+import org.eclipse.sirius.components.diagrams.Diagram;
+import org.eclipse.sirius.components.diagrams.Node;
 import org.eclipse.sirius.components.diagrams.ViewModifier;
 import org.eclipse.sirius.components.diagrams.tests.graphql.HideDiagramElementMutationRunner;
 import org.eclipse.sirius.components.diagrams.tests.navigation.DiagramNavigator;
@@ -151,6 +155,83 @@ public class GVNestedAndTreeVisibilityTests extends AbstractIntegrationTests {
                 .consumeNextWith(updatedDiagramContentConsumer)
                 .thenCancel()
                 .verify(Duration.ofSeconds(10));
+    }
+
+    @DisplayName("GIVEN a diagram with actionA and actionB linked by a composition edge, WHEN all the elements of the diagram are revealed at once, THEN actionB is still visible on the diagram background")
+    @GivenSysONServer({ GVSimpleNestedAndTreeElementsTestProjectData.SCRIPT_PATH })
+    @Test
+    public void testRevealAllDiagramElementsShouldNotHideTreeNodes() {
+        var flux = this.givenSubscriptionToDiagram();
+        var allElementIds = new AtomicReference<Set<String>>();
+
+        Consumer<Object> initialDiagramContentConsumer = assertRefreshedDiagramThat(diag -> {
+            var actionB = new DiagramNavigator(diag).nodeWithId(GVSimpleNestedAndTreeElementsTestProjectData.GraphicalIds.ACTION_B_ID).getNode();
+            assertThat(actionB).isNotNull();
+            assertThat(actionB.getState().equals(ViewModifier.Normal)).isTrue();
+
+            var actionFlowCompartment = new DiagramNavigator(diag).nodeWithId(GVSimpleNestedAndTreeElementsTestProjectData.GraphicalIds.ACTION_A_ID)
+                    .childNodeWithLabel("action flow")
+                    .getNode();
+            assertThat(actionFlowCompartment).isNotNull();
+            assertThat(actionFlowCompartment.getState().equals(ViewModifier.Hidden)).isTrue();
+
+            allElementIds.set(this.collectAllElementIds(diag));
+            assertThat(allElementIds.get())
+                    .contains(GVSimpleNestedAndTreeElementsTestProjectData.GraphicalIds.ACTION_B_ID)
+                    .contains(GVSimpleNestedAndTreeElementsTestProjectData.GraphicalIds.ACTION_A_ACTION_FLOW_COMPARTMENT);
+        });
+
+        // The 'Reveal hidden elements' action of the diagram toolbar sends every element of the diagram in a single
+        // request. The compartment de-duplication must not hide the tree nodes that the very same request reveals.
+        Runnable revealAllElements = () -> {
+            var input = new HideDiagramElementInput(UUID.randomUUID(), GVSimpleNestedAndTreeElementsTestProjectData.EDITING_CONTEXT_ID,
+                    GVSimpleNestedAndTreeElementsTestProjectData.GraphicalIds.DIAGRAM_ID, allElementIds.get(), false);
+            var result = this.hideDiagramElementMutationRunner.run(input);
+            String typename = JsonPath.read(result.data(), "$.data.hideDiagramElement.__typename");
+            assertThat(typename).isEqualTo(SuccessPayload.class.getSimpleName());
+        };
+
+        Consumer<Object> updatedDiagramContentConsumer = assertRefreshedDiagramThat(diag -> {
+            var actionB = new DiagramNavigator(diag).nodeWithId(GVSimpleNestedAndTreeElementsTestProjectData.GraphicalIds.ACTION_B_ID).getNode();
+            assertThat(actionB).isNotNull();
+            assertThat(actionB.getState())
+                    .as("actionB was explicitly revealed, it must not be hidden by the compartment de-duplication")
+                    .isEqualTo(ViewModifier.Normal);
+
+            var actionFlowCompartment = new DiagramNavigator(diag).nodeWithId(GVSimpleNestedAndTreeElementsTestProjectData.GraphicalIds.ACTION_A_ID)
+                    .childNodeWithLabel("action flow")
+                    .getNode();
+            assertThat(actionFlowCompartment).isNotNull();
+            assertThat(actionFlowCompartment.getState()).isEqualTo(ViewModifier.Normal);
+
+            var edgeAB = new DiagramNavigator(diag).edgeWithId(GVSimpleNestedAndTreeElementsTestProjectData.GraphicalIds.A_B_EDGE_ID).getEdge();
+            assertThat(edgeAB).isNotNull();
+            assertThat(edgeAB.getState()).isEqualTo(ViewModifier.Normal);
+        });
+
+        StepVerifier.create(flux)
+                .consumeNextWith(initialDiagramContentConsumer)
+                .then(revealAllElements)
+                .consumeNextWith(updatedDiagramContentConsumer)
+                .thenCancel()
+                .verify(Duration.ofSeconds(10));
+    }
+
+    /**
+     * Collects the identifiers of every node (including children and border nodes) and every edge of the given diagram,
+     * the way the 'Reveal hidden elements' action of the diagram toolbar does on the frontend.
+     */
+    private Set<String> collectAllElementIds(Diagram diagram) {
+        Set<String> elementIds = new HashSet<>();
+        diagram.getNodes().forEach(node -> this.collectNodeIds(node, elementIds));
+        diagram.getEdges().forEach(edge -> elementIds.add(edge.getId()));
+        return elementIds;
+    }
+
+    private void collectNodeIds(Node node, Set<String> elementIds) {
+        elementIds.add(node.getId());
+        node.getChildNodes().forEach(childNode -> this.collectNodeIds(childNode, elementIds));
+        node.getBorderNodes().forEach(borderNode -> this.collectNodeIds(borderNode, elementIds));
     }
 
     @DisplayName("GIVEN a diagram with actionA and actionB linked by a composition edge, WHEN the actions compartment is revelead on actionA, THEN actionB is hidden on the diagram background")
